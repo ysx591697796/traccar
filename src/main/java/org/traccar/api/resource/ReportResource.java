@@ -18,10 +18,9 @@ package org.traccar.api.resource;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.sql.SQLException;
-import java.util.Collection;
+import java.sql.*;
+import java.util.*;
 import java.util.Date;
-import java.util.List;
 
 import javax.activation.DataHandler;
 import javax.mail.MessagingException;
@@ -42,6 +41,7 @@ import org.traccar.Context;
 import org.traccar.api.BaseResource;
 import org.traccar.helper.LogAction;
 import org.traccar.model.Event;
+import org.traccar.model.OutInfo;
 import org.traccar.model.Position;
 import org.traccar.reports.Events;
 import org.traccar.reports.Summary;
@@ -101,6 +101,43 @@ public class ReportResource extends BaseResource {
             @QueryParam("from") Date from, @QueryParam("to") Date to) throws SQLException {
         LogAction.logReport(getUserId(), "route", from, to, deviceIds, groupIds);
         return Route.getObjects(getUserId(), deviceIds, groupIds, from, to);
+    }
+
+//    @Path("test")
+//    @GET
+//    public void getTest(
+//            @QueryParam("dId") final String dId) {
+//        System.out.println("recive get:" + dId);
+//    }
+
+    @Path("lastinfo")
+    @GET
+    public Map<String, Object> getLastinfo(@QueryParam("uniqueid") final String uniqueid) {
+        Map<String, Object> tag = new HashMap<>();
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            String url = "jdbc:mysql://localhost:3306/FASTGps?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8&sessionVariables=sql_mode=''&serverTimezone=UTC";
+            String user = "root";
+            String pwd = "123456";
+            Connection connection = DriverManager.getConnection(url, user, pwd);
+            String sql = "SELECT id,uniqueid,terminallnOut,battery,deciceStatusCode FROM FASTGps.tc_devices WHERE uniqueid='" + uniqueid + "';";
+            PreparedStatement statement = connection.prepareStatement(sql);
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                tag.put("deciceNum", rs.getString("id"));
+                tag.put("deviceQrCode", uniqueid);
+                tag.put("terminallnOut", rs.getString("terminallnOut"));
+                tag.put("batteryQuantity", rs.getString("battery"));
+                tag.put("deciceStatusCode", rs.getString("deciceStatusCode"));
+            }
+            rs.close();
+            statement.close();
+            connection.close();
+            System.out.println("Update devices success.");
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }
+        return tag;
     }
 
     @Path("route")

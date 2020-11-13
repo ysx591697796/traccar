@@ -27,11 +27,14 @@ import org.traccar.database.StatisticsManager;
 import org.traccar.helper.DateUtil;
 import org.traccar.model.Position;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class MainEventHandler extends ChannelInboundHandlerAdapter {
 
@@ -41,6 +44,19 @@ public class MainEventHandler extends ChannelInboundHandlerAdapter {
 
     private final Set<String> connectionlessProtocols = new HashSet<>();
     private final Set<String> logAttributes = new LinkedHashSet<>();
+
+    private static final Double earthRad = 6378137.0;
+
+    public Double standardLat(Double lat) {
+        Double a = lat * Math.PI / 180;
+        Double result = earthRad / 2 * Math.log((1.0 + Math.sin(a)) / (1.0 - Math.sin(a)));
+        return result;
+    }
+
+    public Double standardLon(Double lon) {
+        Double result = lon * Math.PI / 180 * earthRad;
+        return result;
+    }
 
     public MainEventHandler() {
         String connectionlessProtocolList = Context.getConfig().getString("status.ignoreOffline");
@@ -107,6 +123,70 @@ public class MainEventHandler extends ChannelInboundHandlerAdapter {
                         break;
                 }
             }
+            //Output received information
+            System.out.println("receive info:" + builder.toString());
+
+            int apiFlag = 1;
+
+            //Output API
+            HttpURLConnection conn = null;
+            try {
+                StringBuilder submitInfo = new StringBuilder("http://211.117.37.253:48080/cargps/");
+//                StringBuilder submitInfo = new StringBuilder("http://47.99.169.174:8082/api/reports/test?");
+                submitInfo.append(position.getDeviceId() + "/" + uniqueId + "/" + position.getLatitude() + "/"
+                        + position.getLongitude() + "/" + position.getSpeed());
+//                submitInfo.append("dId=123");
+                System.out.println("submitInfo:" + submitInfo);
+                URL url = new URL(submitInfo.toString());
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestProperty("accept", "*/");
+                conn.setRequestProperty("connection", "Keep-Alive");
+                conn.setRequestProperty("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)");
+                conn.setDoOutput(true);
+                conn.setDoInput(true);
+                conn.setRequestMethod("GET");
+                conn.connect();
+                conn.getInputStream();
+            } catch (Exception e) {
+                System.out.println("Can not link Api.");
+                apiFlag = 0;
+//                e.printStackTrace();
+            } finally {
+                conn.disconnect();
+            }
+
+            Date date = new Date();
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String upDate = format.format(date).toString();
+            //Update table device
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                String url = "jdbc:mysql://localhost:3306/FASTGps?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8&sessionVariables=sql_mode=''&serverTimezone=UTC";
+                String user = "root";
+                String pwd = "123456";
+                Double standardLa = standardLat(position.getLatitude());
+                Double standardLo = standardLon(position.getLongitude());
+                Connection connection = DriverManager.getConnection(url, user, pwd);
+                String sql = null;
+                if (apiFlag == 1) {
+                    sql = "UPDATE FASTGps.tc_devices SET longitude='" + position.getLongitude() + "',latitude='"
+                            + position.getLatitude() + "', standardLat='" + standardLa
+                            + "', standardLon='" + standardLo + "', apiResult='" + apiFlag
+                            + "', apiTime='" + upDate + "' WHERE uniqueid='" + uniqueId + "';";
+                } else {
+                    sql = "UPDATE FASTGps.tc_devices SET longitude='" + position.getLongitude() + "',latitude='"
+                            + position.getLatitude() + "', standardLat='" + standardLa
+                            + "', standardLon='" + standardLo + "', apiResult='" + apiFlag
+                            + "', apiTime='" + upDate + "' WHERE uniqueid='" + uniqueId + "';";
+                }
+                PreparedStatement statement = connection.prepareStatement(sql);
+                statement.execute();
+                connection.close();
+                System.out.println("Update devices success.");
+            } catch (ClassNotFoundException | SQLException e) {
+                e.printStackTrace();
+            }
+
             LOGGER.info(builder.toString());
 
             Main.getInjector().getInstance(StatisticsManager.class)

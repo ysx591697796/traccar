@@ -38,23 +38,30 @@ public final class Route {
     }
 
     public static Collection<Position> getObjects(long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
-            Date from, Date to) throws SQLException {
+                                                  Date from, Date to) throws SQLException {
         ReportUtils.checkPeriodLimit(from, to);
         ArrayList<Position> result = new ArrayList<>();
-        for (long deviceId: ReportUtils.getDeviceList(deviceIds, groupIds)) {
+        for (long deviceId : ReportUtils.getDeviceList(deviceIds, groupIds)) {
             Context.getPermissionsManager().checkDevice(userId, deviceId);
             result.addAll(Context.getDataManager().getPositions(deviceId, from, to));
         }
+        //Limited output
+//        ArrayList<Position> temp = new ArrayList<>();
+//        for (int i = 0; i < 70; i++) {
+//            temp.add(result.get(i));
+//        }
+//        result.clear();
+
         return result;
     }
 
     public static void getExcel(OutputStream outputStream,
-            long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
-            Date from, Date to) throws SQLException, IOException {
+                                long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
+                                Date from, Date to) throws SQLException, IOException {
         ReportUtils.checkPeriodLimit(from, to);
         ArrayList<DeviceReport> devicesRoutes = new ArrayList<>();
         ArrayList<String> sheetNames = new ArrayList<>();
-        for (long deviceId: ReportUtils.getDeviceList(deviceIds, groupIds)) {
+        for (long deviceId : ReportUtils.getDeviceList(deviceIds, groupIds)) {
             Context.getPermissionsManager().checkDevice(userId, deviceId);
             Collection<Position> positions = Context.getDataManager()
                     .getPositions(deviceId, from, to);

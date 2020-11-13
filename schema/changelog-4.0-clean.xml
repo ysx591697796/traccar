@@ -138,6 +138,15 @@
       <column name="contact" type="VARCHAR(512)" />
       <column name="category" type="VARCHAR(128)" />
       <column name="disabled" type="BOOLEAN" defaultValueBoolean="false" />
+      <column name="longitude" type="DOUBLE" />
+      <column name="latitude" type="DOUBLE" />
+      <column name="battery" type="INT" />
+      <column name="standardLon" type="DOUBLE" />
+      <column name="standardLat" type="DOUBLE" />
+      <column name="terminallnOut" type="INT" />
+      <column name="deciceStatusCode" type="VARCHAR(128)" />
+      <column name="apiResult" type="INT" />
+      <column name="apiTime" type="timestamp" />
     </createTable>
 
     <createTable tableName="tc_drivers">

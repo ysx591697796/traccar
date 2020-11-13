@@ -105,13 +105,13 @@ public class SecurityRequestFilter implements ContainerRequestFilter {
             requestContext.setSecurityContext(securityContext);
         } else {
             Method method = resourceInfo.getResourceMethod();
-            if (!method.isAnnotationPresent(PermitAll.class)) {
-                Response.ResponseBuilder responseBuilder = Response.status(Response.Status.UNAUTHORIZED);
-                if (!XML_HTTP_REQUEST.equals(request.getHeader(X_REQUESTED_WITH))) {
-                    responseBuilder.header(WWW_AUTHENTICATE, BASIC_REALM);
-                }
-                throw new WebApplicationException(responseBuilder.build());
-            }
+//            if (!method.isAnnotationPresent(PermitAll.class)) {
+//                Response.ResponseBuilder responseBuilder = Response.status(Response.Status.UNAUTHORIZED);
+//                if (!XML_HTTP_REQUEST.equals(request.getHeader(X_REQUESTED_WITH))) {
+//                    responseBuilder.header(WWW_AUTHENTICATE, BASIC_REALM);
+//                }
+//                throw new WebApplicationException(responseBuilder.build());
+//            }
         }
 
     }
