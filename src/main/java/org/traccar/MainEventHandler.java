@@ -47,12 +47,14 @@ public class MainEventHandler extends ChannelInboundHandlerAdapter {
 
     private static final Double earthRad = 6378137.0;
 
+    //4326 to 3875
     public Double standardLat(Double lat) {
         Double a = lat * Math.PI / 180;
         Double result = earthRad / 2 * Math.log((1.0 + Math.sin(a)) / (1.0 - Math.sin(a)));
         return result;
     }
 
+    //4326 to 3875
     public Double standardLon(Double lon) {
         Double result = lon * Math.PI / 180 * earthRad;
         return result;
@@ -124,18 +126,32 @@ public class MainEventHandler extends ChannelInboundHandlerAdapter {
                 }
             }
             //Output received information
-            System.out.println("receive info:" + builder.toString());
+//            System.out.println("receive info:" + builder.toString() + " " + battery);
+//            System.out.println("receive info:" + position.getAttributes().get("battery"));
+//            System.out.println("debug.xml:" + Context.getConfig().getString("output.api"));
+
+            //Battery
+            StringBuilder battery = new StringBuilder();
+            if (position.getAttributes().get("batteryLevel") != null) {
+                Double temp = Double.parseDouble(position.getAttributes().get("batteryLevel").toString());
+                battery.append(Integer.parseInt(new java.text.DecimalFormat("0").format(temp)));
+            } else {
+                Double temp = (((Double.parseDouble(position.getAttributes().get("battery").toString()) - 3.3) / 0.9) * 100);
+                battery.append(Integer.parseInt(new java.text.DecimalFormat("0").format(temp)));
+            }
+
+            //StandLat,StandLon
+            Double standardLa = standardLat(position.getLatitude());
+            Double standardLo = standardLon(position.getLongitude());
 
             int apiFlag = 1;
 
             //Output API
             HttpURLConnection conn = null;
             try {
-                StringBuilder submitInfo = new StringBuilder("http://211.117.37.253:48080/cargps/");
-//                StringBuilder submitInfo = new StringBuilder("http://47.99.169.174:8082/api/reports/test?");
-                submitInfo.append(position.getDeviceId() + "/" + uniqueId + "/" + position.getLatitude() + "/"
-                        + position.getLongitude() + "/" + position.getSpeed());
-//                submitInfo.append("dId=123");
+                StringBuilder submitInfo = new StringBuilder(Context.getConfig().getString("output.api") + "/");
+                submitInfo.append(position.getDeviceId() + "/" + uniqueId + "/" + String.format("%.6f", standardLa) + "/"
+                        + String.format("%.6f", standardLo) + "/" + position.getSpeed());
                 System.out.println("submitInfo:" + submitInfo);
                 URL url = new URL(submitInfo.toString());
                 conn = (HttpURLConnection) url.openConnection();
@@ -164,21 +180,11 @@ public class MainEventHandler extends ChannelInboundHandlerAdapter {
                 String url = "jdbc:mysql://localhost:3306/FASTGps?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8&sessionVariables=sql_mode=''&serverTimezone=UTC";
                 String user = "root";
                 String pwd = "123456";
-                Double standardLa = standardLat(position.getLatitude());
-                Double standardLo = standardLon(position.getLongitude());
                 Connection connection = DriverManager.getConnection(url, user, pwd);
-                String sql = null;
-                if (apiFlag == 1) {
-                    sql = "UPDATE FASTGps.tc_devices SET longitude='" + position.getLongitude() + "',latitude='"
-                            + position.getLatitude() + "', standardLat='" + standardLa
-                            + "', standardLon='" + standardLo + "', apiResult='" + apiFlag
-                            + "', apiTime='" + upDate + "' WHERE uniqueid='" + uniqueId + "';";
-                } else {
-                    sql = "UPDATE FASTGps.tc_devices SET longitude='" + position.getLongitude() + "',latitude='"
-                            + position.getLatitude() + "', standardLat='" + standardLa
-                            + "', standardLon='" + standardLo + "', apiResult='" + apiFlag
-                            + "', apiTime='" + upDate + "' WHERE uniqueid='" + uniqueId + "';";
-                }
+                String sql = "UPDATE FASTGps.tc_devices SET longitude='" + position.getLongitude() + "',latitude='"
+                        + position.getLatitude() + "', standardLat='" + String.format("%.6f", standardLa)
+                        + "', standardLon='" + String.format("%.6f", standardLo) + "', apiResult='" + apiFlag
+                        + "', apiTime='" + upDate + "', battery='" + battery + "' WHERE uniqueid='" + uniqueId + "';";
                 PreparedStatement statement = connection.prepareStatement(sql);
                 statement.execute();
                 connection.close();

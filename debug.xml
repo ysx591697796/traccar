@@ -25,6 +25,8 @@
     <entry key='database.user'>root</entry>
     <entry key='database.password'>123456</entry>
 
+    <entry key="output.api">http://211.117.37.253:48080/cargps</entry>
+
     <entry key='atrack.custom'>true</entry>
     <entry key='intellitrac.port'>6037</entry>
 
